@@ -3,7 +3,7 @@
 #include <cmath>
 #define x_PI 3.141592653589793238462643383
 
-namespace Revo
+namespace CloudSeed
 {
 	class Hp1
 	{

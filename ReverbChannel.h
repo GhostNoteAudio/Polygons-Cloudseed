@@ -10,7 +10,7 @@
 #include "Biquad.h"
 #include "LcgRandom.h"
 
-namespace Revo
+namespace CloudSeed
 {
 	const int EARLY_DIFFUSER_COUNT = 8;
 	const int DELAY_LINE_COUNT = 6;
@@ -37,7 +37,7 @@ namespace Revo
 		static const int Wash = 5; // white noise wash
 	};
 
-	class RevoChannel
+	class ReverbChannel
 	{
 	private:
 		int samplerate;
@@ -89,7 +89,7 @@ namespace Revo
 	public:
 		bool freeze;
 
-		RevoChannel(int samplerate, bool leftChannel) :
+		ReverbChannel(int samplerate, bool leftChannel) :
 			lowCut(Biquad::FilterType::HighPass, samplerate),
 			highCut(Biquad::FilterType::LowPass, samplerate),
 			feedbackHi { Biquad(Biquad::FilterType::HighShelf, samplerate), Biquad(Biquad::FilterType::HighShelf, samplerate), Biquad(Biquad::FilterType::HighShelf, samplerate), 

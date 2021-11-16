@@ -4,7 +4,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace Revo
+namespace CloudSeed
 {
     static inline float Clip1(float value)
     {

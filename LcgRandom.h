@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace Revo
+namespace CloudSeed
 {
 	class LcgRandom
 	{

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace Revo
+namespace CloudSeed
 {
 	class Biquad
 	{

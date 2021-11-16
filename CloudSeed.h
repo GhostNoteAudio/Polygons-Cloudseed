@@ -1,18 +1,18 @@
 #pragma once
 
 #include "Parameter.h"
-#include "Tritium.h"
+#include "Polygons.h"
 #include "menuManager.h"
 #include "Controller.h"
 
-namespace Revo
+namespace CloudSeed
 {
     const int PRESET_COUNT = 7;
 
     float BufferL[BUFFER_SIZE];
     float BufferR[BUFFER_SIZE];
 
-    MenuManager menu;
+    Polygons::MenuManager menu;
     Controller controller(SAMPLERATE);
     uint16_t Presets[Parameter::COUNT * PRESET_COUNT];
     uint8_t currentPreset;
@@ -266,16 +266,16 @@ namespace Revo
     inline void setPresetLed()
     {
         // changes the different RGB colours of the LED to indicate preset number
-        controls.pushDigital(0, (currentPreset + 1) & 0b001);
-        controls.pushDigital(1, (currentPreset + 1) & 0b010);
-        controls.pushDigital(2, (currentPreset + 1) & 0b100);
+        Polygons::controls.pushDigital(0, (currentPreset + 1) & 0b001);
+        Polygons::controls.pushDigital(1, (currentPreset + 1) & 0b010);
+        Polygons::controls.pushDigital(2, (currentPreset + 1) & 0b100);
     }
 
     inline void setActiveFreezeLeds()
     {
         // Uses the Red LED to indicate active and freeze states
-        controls.pushDigital(3, active);
-        controls.pushDigital(6, freeze);
+        Polygons::controls.pushDigital(3, active);
+        Polygons::controls.pushDigital(6, freeze);
     }
 
     inline void setIOConfig()
@@ -283,47 +283,47 @@ namespace Revo
         stereo = controller.GetScaledParameter(Parameter::InputMode) > 0.5;
         int gainIn = (uint8_t)round(controller.GetScaledParameter(Parameter::InputGain) * 2);
         int gainOut = (uint8_t)round(controller.GetScaledParameter(Parameter::OutputGain) * 2);
-        cctrl.analogInGain(gainIn, gainIn);
-        cctrl.lineOutGain(gainOut, gainOut, false);
-        cctrl.headphoneGain(gainOut, gainOut, false);
+        Polygons::cctrl.analogInGain(gainIn, gainIn);
+        Polygons::cctrl.lineOutGain(gainOut, gainOut, false);
+        Polygons::cctrl.headphoneGain(gainOut, gainOut, false);
     }
 
-    inline void handleUpdate(ControlType type, int index)
+    inline void handleUpdate(Polygons::ControlType type, int index)
     {
-        if (type == ControlType::Digital && index == 7)
+        if (type == Polygons::ControlType::Digital && index == 7)
         {
             storePreset(currentPreset);
         }
-        else if (type == ControlType::Digital && index < menu.pageCount)
+        else if (type == Polygons::ControlType::Digital && index < menu.pageCount)
         {
             menu.SelectedPage = index;
             menu.setUpdated();
         }
-        else if (type == ControlType::Digital && index == 8)
+        else if (type == Polygons::ControlType::Digital && index == 8)
         {
-            if (controls.Digital[index] > 0)
+            if (Polygons::controls.Digital[index] > 0)
             {
                 loadPreset((currentPreset + 1) % PRESET_COUNT);
             }
         }
-        else if (type == ControlType::Digital && index == 9)
+        else if (type == Polygons::ControlType::Digital && index == 9)
         {
-            if (controls.Digital[index] > 0)
+            if (Polygons::controls.Digital[index] > 0)
             {
                 active = !active;
                 setActiveFreezeLeds();
             }
         }
-        else if (type == ControlType::Digital && index == 10)
+        else if (type == Polygons::ControlType::Digital && index == 10)
         {
-            freeze = controls.Digital[index] > 0;
+            freeze = Polygons::controls.Digital[index] > 0;
             controller.Freeze(freeze);
             setActiveFreezeLeds();
         }
-        else if (type == ControlType::Encoder)
+        else if (type == Polygons::ControlType::Encoder)
         {
-            int delta = (int)controls.EncoderDelta[index];
-            controls.EncoderDelta[index] = 0;
+            int delta = (int)Polygons::controls.EncoderDelta[index];
+            Polygons::controls.EncoderDelta[index] = 0;
             int paramId = getParam(menu.SelectedPage, index);
             if (paramId >= 0 && paramId < Parameter::COUNT)
             {
@@ -405,7 +405,7 @@ namespace Revo
         active = true;
         freeze = false;
         stereo = true;
-        controls.onUpdate = handleUpdate;
+        Polygons::controls.onUpdate = handleUpdate;
         menu.pageCount = 8;
         menu.getPageName = getPageName;
         menu.getParameterShortName = getParameterShortName;
@@ -419,9 +419,9 @@ namespace Revo
 
     inline void loop()
     {
-        controls.readUpdates();
+        Polygons::controls.readUpdates();
         menu.Draw();
-        pushDisplay();
+        Polygons::pushDisplay();
         setPresetLed();
         setActiveFreezeLeds();
     }

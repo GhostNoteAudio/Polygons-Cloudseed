@@ -4,7 +4,7 @@
 #include "Utils.h"
 #include <stdint.h>
 
-namespace Revo
+namespace CloudSeed
 {
 	template<int N>
 	class ModulatedDelay

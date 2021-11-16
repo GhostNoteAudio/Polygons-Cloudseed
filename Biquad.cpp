@@ -2,7 +2,7 @@
 #include <math.h>
 #include "Biquad.h"
 
-namespace Revo
+namespace CloudSeed
 {
 	Biquad::Biquad() 
 	{

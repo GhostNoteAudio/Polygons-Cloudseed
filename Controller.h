@@ -3,18 +3,18 @@
 
 #include "Constants.h"
 #include "Parameter.h"
-#include "RevoChannel.h"
+#include "ReverbChannel.h"
 #include "Utils.h"
 
-namespace Revo
+namespace CloudSeed
 {
 	class Controller
 	{
 	private:
 		int samplerate;
 
-		RevoChannel channelL;
-		RevoChannel channelR;
+		ReverbChannel channelL;
+		ReverbChannel channelR;
 		uint16_t parameters[Parameter::COUNT];
 		float* outputs[2];
 

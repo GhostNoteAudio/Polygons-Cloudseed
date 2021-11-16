@@ -1,10 +1,10 @@
 {
-  "name": "Revo for Tritium",
+  "name": "Polygons - Cloud Seed",
   "frameworks": "Arduino",
   "platforms": "Teensy",
   "keywords": "sound, audio, effect",
-  "description": "Revo for Tritium",
-  "url": "https://github.com/ValdemarOrn/Tritium",
+  "description": "Cloud Seed for Polygons",
+  "url": "https://github.com/GhostNoteAudio",
   "version": "0.1",
   "export": {
   },
@@ -16,7 +16,7 @@
   "repository":
   {
     "type": "git",
-    "url": "https://github.com/ValdemarOrn"
+    "url": "https://github.com/GhostNoteAudio"
   },
   "dependencies":
   {
