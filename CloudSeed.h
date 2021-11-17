@@ -23,129 +23,75 @@ namespace CloudSeed
     void loadPreset(int number);
     void storePreset(int number);
 
-    const char* ParameterShortNames[Parameter::COUNT]
+    const char* ParameterNames[Parameter::COUNT];
+
+    void setNames()
     {
-        "Mode",
-        "PreD",
-        "LoCut",
-        "HiCut",
-        "Dry",
-        "Wet",
-        
-        "Size",
-        "Mod",
-        "Rate",
-        "Gain",
+        ParameterNames[Parameter::Mode] = "FX Mode";
+        ParameterNames[Parameter::PreDelay] = "Pre-delay";
+        ParameterNames[Parameter::LowCut] = "Low Cut";
+        ParameterNames[Parameter::HighCut] = "High Cut";
+        ParameterNames[Parameter::Dry] = "Dry Gain";
+        ParameterNames[Parameter::Wet] = "Wet Gain";
 
-        "Size",
-        "Mod",
-        "Rate",
-        "Decay",
-        "Gain",
+        ParameterNames[Parameter::EarlySize] = "Early Size";
+        ParameterNames[Parameter::EarlyMod] = "Mod Amount";
+        ParameterNames[Parameter::EarlyRate] = "Mod Rate";
+        ParameterNames[Parameter::EarlyGain] = "Early Gain";
 
-        "Early",
-        "Delay",
-        "Diff",
+        ParameterNames[Parameter::LateSize] = "Late Size";
+        ParameterNames[Parameter::LateMod] = "Mod Amount";
+        ParameterNames[Parameter::LateRate] = "Mod Rate";
+        ParameterNames[Parameter::LateDecay] = "Decay";
+        ParameterNames[Parameter::LateGain] = "Late Gain";
 
-        "Input",
-        "Input Gain",
-        "Output Gain",
-    };
+        ParameterNames[Parameter::SeedEarly] = "Early Seed";
+        ParameterNames[Parameter::SeedDelay] = "Delay Seed";
+        ParameterNames[Parameter::SeedDiffuse] = "Diffuser Seed";
 
-    const char* ParameterLongNames[Parameter::COUNT]
-    {
-        "Reverb Mode",
-        "Pre-delay",
-        "Input Low Cut",
-        "Input High Cut",
-        "Dry Gain",
-        "Wet Gain",
-        
-        "Early Size",
-        "Early Mod Amount",
-        "Early Mod Rate",
-        "Early Gain",
-
-        "Late Size",
-        "Late Mod Amount",
-        "Late Mod Rate",
-        "Decay",
-        "Late Gain",
-
-        "Early Seed",
-        "Delay Line Seed",
-        "Diffuser Seed",
-
-        "Input",
-        "Input Gain",
-        "Output Gain",
-    };
+        ParameterNames[Parameter::InputMode] = "Input";
+        ParameterNames[Parameter::InputGain] = "Input Gain";
+        ParameterNames[Parameter::OutputGain] = "Output Gain";
+    }
 
     int getParam(int page, int index)
     {
         if (page == 0)
         {
-            if (index == 0)
-                return Parameter::Mode;
-            if (index == 1)
-                return Parameter::PreDelay;
-            if (index == 2)
-                return Parameter::LowCut;
-            if (index == 3)
-                return Parameter::HighCut;
-
-            if (index == 4)
-                return Parameter::Dry;
-            if (index == 6)
-                return Parameter::Wet;
+            if (index == 0) return Parameter::Mode;
+            if (index == 1) return Parameter::PreDelay;
+            if (index == 2) return Parameter::LowCut;
+            if (index == 3) return Parameter::HighCut;
+            if (index == 4) return Parameter::Dry;
+            if (index == 6) return Parameter::Wet;
         }
-
         if (page == 1)
         {
-            if (index == 0)
-                return Parameter::EarlySize;
-            if (index == 1)
-                return Parameter::EarlyMod;
-            if (index == 2)
-                return Parameter::EarlyRate;
-            if (index == 4)
-                return Parameter::EarlyGain;
+            if (index == 0) return Parameter::EarlySize;
+            if (index == 1) return Parameter::EarlyMod;
+            if (index == 2) return Parameter::EarlyRate;
+            if (index == 4) return Parameter::EarlyGain;
         }
-
         if (page == 2)
         {
-            if (index == 0)
-                return Parameter::LateSize;
-            if (index == 1)
-                return Parameter::LateMod;
-            if (index == 2)
-                return Parameter::LateRate;
-            if (index == 3)
-                return Parameter::LateDecay;
-            if (index == 4)
-                return Parameter::LateGain;
+            if (index == 0) return Parameter::LateSize;
+            if (index == 1) return Parameter::LateMod;
+            if (index == 2) return Parameter::LateRate;
+            if (index == 3) return Parameter::LateDecay;
+            if (index == 4) return Parameter::LateGain;
         }
-
         if (page == 3)
         {
-            if (index == 0)
-                return Parameter::SeedEarly;
-            if (index == 1)
-                return Parameter::SeedDelay;
-            if (index == 2)
-                return Parameter::SeedDiffuse;
+            if (index == 0) return Parameter::SeedEarly;
+            if (index == 1) return Parameter::SeedDelay;
+            if (index == 2) return Parameter::SeedDiffuse;
         }
-
         if (page == 4)
         {
-            if (index == 0)
-                return Parameter::InputMode;
-            if (index == 4)
-                return Parameter::InputGain;
-            if (index == 6)
-                return Parameter::OutputGain;
+            if (index == 0) return Parameter::InputMode;
+            if (index == 4) return Parameter::InputGain;
+            if (index == 6) return Parameter::OutputGain;
         }
-
         return -1;
     }
 
@@ -167,20 +113,11 @@ namespace CloudSeed
             strcpy(dest, "");
     }
 
-    inline void getParameterShortName(int page, int index, char* dest)
+    inline void getParameterName(int page, int index, char* dest)
     {
         auto para = (int)getParam(page, index);
         if (para >= 0)
-            strcpy(dest, ParameterShortNames[para]);
-        else
-            strcpy(dest, "");
-    }
-
-    inline void getParameterLongName(int page, int index, char* dest)
-    {
-        auto para = (int)getParam(page, index);
-        if (para >= 0)
-            strcpy(dest, ParameterLongNames[para]);
+            strcpy(dest, ParameterNames[para]);
         else
             strcpy(dest, "");
     }
@@ -283,9 +220,9 @@ namespace CloudSeed
         stereo = controller.GetScaledParameter(Parameter::InputMode) > 0.5;
         int gainIn = (uint8_t)round(controller.GetScaledParameter(Parameter::InputGain) * 2);
         int gainOut = (uint8_t)round(controller.GetScaledParameter(Parameter::OutputGain) * 2);
-        Polygons::cctrl.analogInGain(gainIn, gainIn);
-        Polygons::cctrl.lineOutGain(gainOut, gainOut, false);
-        Polygons::cctrl.headphoneGain(gainOut, gainOut, false);
+        Polygons::codec.analogInGain(gainIn, gainIn);
+        Polygons::codec.lineOutGain(gainOut, gainOut, false);
+        Polygons::codec.headphoneGain(gainOut, gainOut, false);
     }
 
     inline void handleUpdate(Polygons::ControlType type, int index)
@@ -397,6 +334,8 @@ namespace CloudSeed
 
     inline void start()
     {
+        setNames();
+
         for (size_t i = 0; i < Parameter::COUNT * PRESET_COUNT; i++)
         {
             Presets[i] = 0;
@@ -408,8 +347,7 @@ namespace CloudSeed
         Polygons::controls.onUpdate = handleUpdate;
         menu.pageCount = 8;
         menu.getPageName = getPageName;
-        menu.getParameterShortName = getParameterShortName;
-        menu.getParameterLongName = getParameterLongName;
+        menu.getParameterName = getParameterName;
         menu.getParameterDisplay = getParameterDisplay;
         i2sAudioCallback = audioCallback;
         
