@@ -2,7 +2,6 @@
 
 #include "Parameter.h"
 #include "Polygons.h"
-#include "menuManager.h"
 #include "Controller.h"
 
 namespace CloudSeed
@@ -12,12 +11,10 @@ namespace CloudSeed
     float BufferL[BUFFER_SIZE];
     float BufferR[BUFFER_SIZE];
 
-    Polygons::MenuManager menu;
     Controller controller(SAMPLERATE);
+    Polygons::PolyOS os;
     uint16_t Presets[Parameter::COUNT * PRESET_COUNT];
     uint8_t currentPreset;
-    bool active;
-    bool freeze;
     bool stereo;
 
     void loadPreset(int number);
@@ -54,45 +51,77 @@ namespace CloudSeed
         ParameterNames[Parameter::OutputGain] = "Output Gain";
     }
 
-    int getParam(int page, int index)
+    void RegisterParams()
     {
-        if (page == 0)
+        if (os.controlBoard == ControlBoard::Alpha)
         {
-            if (index == 0) return Parameter::Mode;
-            if (index == 1) return Parameter::PreDelay;
-            if (index == 2) return Parameter::LowCut;
-            if (index == 3) return Parameter::HighCut;
-            if (index == 4) return Parameter::Dry;
-            if (index == 6) return Parameter::Wet;
+            os.Register(Parameter::Mode,        60,   Polygons::ControlMode::Encoded, 0, 1);
+            os.Register(Parameter::PreDelay,    1023, Polygons::ControlMode::Encoded, 1, 4);
+            os.Register(Parameter::LowCut,      1023, Polygons::ControlMode::Encoded, 2, 4);
+            os.Register(Parameter::HighCut,     1023, Polygons::ControlMode::Encoded, 3, 4);
+            os.Register(Parameter::Dry,         1023, Polygons::ControlMode::Encoded, 4, 4);
+            os.Register(Parameter::Wet,         1023, Polygons::ControlMode::Encoded, 6, 4);
+
+            os.Register(Parameter::EarlySize,   1023, Polygons::ControlMode::Encoded, 8+0, 4);
+            os.Register(Parameter::EarlyMod,    1023, Polygons::ControlMode::Encoded, 8+1, 4);
+            os.Register(Parameter::EarlyRate,   1023, Polygons::ControlMode::Encoded, 8+2, 4);
+            os.Register(Parameter::EarlyGain,   1023, Polygons::ControlMode::Encoded, 8+4, 4);
+
+            os.Register(Parameter::LateSize,    1023, Polygons::ControlMode::Encoded, 16+0, 4);
+            os.Register(Parameter::LateMod,     1023, Polygons::ControlMode::Encoded, 16+1, 4);
+            os.Register(Parameter::LateRate,    1023, Polygons::ControlMode::Encoded, 16+2, 4);
+            os.Register(Parameter::LateDecay,   1023, Polygons::ControlMode::Encoded, 16+3, 4);
+            os.Register(Parameter::LateGain,    1023, Polygons::ControlMode::Encoded, 16+4, 4);
+
+            os.Register(Parameter::SeedEarly,   1023, Polygons::ControlMode::Encoded, 24+0, 4);
+            os.Register(Parameter::SeedDelay,   1023, Polygons::ControlMode::Encoded, 24+1, 4);
+            os.Register(Parameter::SeedDiffuse, 1023, Polygons::ControlMode::Encoded, 24+2, 4);
+
+            os.Register(Parameter::InputMode,   10,   Polygons::ControlMode::Encoded, 32+0, 1);
+            os.Register(Parameter::InputGain,   1023, Polygons::ControlMode::Encoded, 32+4, 4);
+            os.Register(Parameter::OutputGain,  1023, Polygons::ControlMode::Encoded, 32+6, 4);
         }
-        if (page == 1)
+        else if (os.controlBoard == ControlBoard::Sigma)
         {
-            if (index == 0) return Parameter::EarlySize;
-            if (index == 1) return Parameter::EarlyMod;
-            if (index == 2) return Parameter::EarlyRate;
-            if (index == 4) return Parameter::EarlyGain;
+            os.Register(Parameter::Mode,        60,   Polygons::ControlMode::Encoded, 0, 1);
+            os.Register(Parameter::HighCut,     1023, Polygons::ControlMode::Encoded, 1, 4);
+            os.Register(Parameter::LateDecay,   1023, Polygons::ControlMode::Encoded, 2, 4);
+            os.Register(Parameter::Wet,         1023, Polygons::ControlMode::Encoded, 3, 4);
+
+            os.Register(Parameter::EarlySize,   1023, Polygons::ControlMode::Encoded, 4, 4);
+            os.Register(Parameter::EarlyMod,    1023, Polygons::ControlMode::Encoded, 5, 4);
+            os.Register(Parameter::EarlyRate,   1023, Polygons::ControlMode::Encoded, 6, 4);
+            os.Register(Parameter::EarlyGain,   1023, Polygons::ControlMode::Encoded, 7, 4);
+            
+
+            os.Register(Parameter::InputGain,   1023, Polygons::ControlMode::Encoded, 8, 4);
+            os.Register(Parameter::OutputGain,  1023, Polygons::ControlMode::Encoded, 9, 4);
+            os.Register(Parameter::PreDelay,    1023, Polygons::ControlMode::Encoded, 10, 4);
+            os.Register(Parameter::Dry,         1023, Polygons::ControlMode::Encoded, 11, 4);
+
+            os.Register(Parameter::LateSize,    1023, Polygons::ControlMode::Encoded, 12, 4);
+            os.Register(Parameter::LateMod,     1023, Polygons::ControlMode::Encoded, 13, 4);
+            os.Register(Parameter::LateRate,    1023, Polygons::ControlMode::Encoded, 14, 4);
+            os.Register(Parameter::LateGain,    1023, Polygons::ControlMode::Encoded, 15, 4);
+
+
+            os.Register(Parameter::InputMode,   10,   Polygons::ControlMode::Encoded, 16, 1);
+            os.Register(Parameter::LowCut,      1023, Polygons::ControlMode::Encoded, 17, 4);
+            //
+            //
+            
+            os.Register(Parameter::SeedEarly,   1023, Polygons::ControlMode::Encoded, 20, 4);
+            os.Register(Parameter::SeedDelay,   1023, Polygons::ControlMode::Encoded, 21, 4);
+            os.Register(Parameter::SeedDiffuse, 1023, Polygons::ControlMode::Encoded, 22, 4);
+            //
+
+            
         }
-        if (page == 2)
-        {
-            if (index == 0) return Parameter::LateSize;
-            if (index == 1) return Parameter::LateMod;
-            if (index == 2) return Parameter::LateRate;
-            if (index == 3) return Parameter::LateDecay;
-            if (index == 4) return Parameter::LateGain;
-        }
-        if (page == 3)
-        {
-            if (index == 0) return Parameter::SeedEarly;
-            if (index == 1) return Parameter::SeedDelay;
-            if (index == 2) return Parameter::SeedDiffuse;
-        }
-        if (page == 4)
-        {
-            if (index == 0) return Parameter::InputMode;
-            if (index == 4) return Parameter::InputGain;
-            if (index == 6) return Parameter::OutputGain;
-        }
-        return -1;
+
+
+        os.Register(Parameter::Active,      1,    Polygons::ControlMode::DigitalToggle, 9, 0);
+        os.Register(Parameter::Freeze,      1,    Polygons::ControlMode::Digital, 10, 0);
+        
     }
 
     inline void getPageName(int page, char* dest)
@@ -113,24 +142,22 @@ namespace CloudSeed
             strcpy(dest, "");
     }
 
-    inline void getParameterName(int page, int index, char* dest)
+    inline void getParameterName(int paramId, char* dest)
     {
-        auto para = (int)getParam(page, index);
-        if (para >= 0)
-            strcpy(dest, ParameterNames[para]);
+        if (paramId >= 0)
+            strcpy(dest, ParameterNames[paramId]);
         else
             strcpy(dest, "");
     }
 
-    inline void getParameterDisplay(int page, int index, char* dest)
+    inline void getParameterDisplay(int paramId, char* dest)
     {
-        int param = getParam(page, index);
-        double val = controller.GetScaledParameter(param);
-        if (param == -1)
+        double val = controller.GetScaledParameter(paramId);
+        if (paramId == -1)
         {
             strcpy(dest, "");
         }
-        else if (param == Parameter::Mode)
+        else if (paramId == Parameter::Mode)
         {
             if (val == Mode::Fast)
                 sprintf(dest, "Fast");
@@ -145,52 +172,52 @@ namespace CloudSeed
             else if (val == Mode::Wash)
                 sprintf(dest, "Wash");
         }
-        else if (param == Parameter::PreDelay)
+        else if (paramId == Parameter::PreDelay)
         {
             sprintf(dest, "%dms", (int)val);
         }
-        else if (param == Parameter::LowCut)
+        else if (paramId == Parameter::LowCut)
         {
             if (val < 1000)
                 sprintf(dest, "%dhz", (int)val);
             else
                 sprintf(dest, "%.1fKhz", val/1000);
         }
-        else if (param == Parameter::HighCut)
+        else if (paramId == Parameter::HighCut)
         {
             if (val < 1000)
                 sprintf(dest, "%dhz", (int)val);
             else
                 sprintf(dest, "%.1fKhz", val/1000);
         }
-        else if (param == Parameter::Dry || param == Parameter::Wet || param == Parameter::EarlyGain || param == Parameter::LateGain)
+        else if (paramId == Parameter::Dry || paramId == Parameter::Wet || paramId == Parameter::EarlyGain || paramId == Parameter::LateGain)
         {
             if (val <= -29.9)
                 sprintf(dest, "Mute");
             else
                 sprintf(dest, "%.1fdB", val);
         }
-        else if (param == Parameter::EarlySize || param == Parameter::LateSize || param == Parameter::EarlyMod || param == Parameter::LateMod)
+        else if (paramId == Parameter::EarlySize || paramId == Parameter::LateSize || paramId == Parameter::EarlyMod || paramId == Parameter::LateMod)
         {
             sprintf(dest, "%d%%", (int)(val*100));
         }
-        else if (param == Parameter::EarlyRate || param == Parameter::LateRate)
+        else if (paramId == Parameter::EarlyRate || paramId == Parameter::LateRate)
         {
             sprintf(dest, "%.2fHz", val);
         }
-        else if (param == Parameter::LateDecay)
+        else if (paramId == Parameter::LateDecay)
         {
             sprintf(dest, "%.2fs", val);
         }
-        else if (param == Parameter::SeedEarly || param == Parameter::SeedDelay || param == Parameter::SeedDiffuse)
+        else if (paramId == Parameter::SeedEarly || paramId == Parameter::SeedDelay || paramId == Parameter::SeedDiffuse)
         {
             sprintf(dest, "%d", (int)val);
         }
-        else if (param == Parameter::InputMode)
+        else if (paramId == Parameter::InputMode)
         {
             sprintf(dest, val < 0.5 ? "Mono" : "Stereo");
         }
-        else if (param == Parameter::InputGain || param == Parameter::OutputGain)
+        else if (paramId == Parameter::InputGain || paramId == Parameter::OutputGain)
         {
             sprintf(dest, "%ddB", (int)val);
         }
@@ -203,76 +230,54 @@ namespace CloudSeed
     inline void setPresetLed()
     {
         // changes the different RGB colours of the LED to indicate preset number
-        Polygons::controls.pushDigital(0, (currentPreset + 1) & 0b001);
-        Polygons::controls.pushDigital(1, (currentPreset + 1) & 0b010);
-        Polygons::controls.pushDigital(2, (currentPreset + 1) & 0b100);
+        Polygons::pushDigital(0, (currentPreset + 1) & 0b001);
+        Polygons::pushDigital(1, (currentPreset + 1) & 0b010);
+        Polygons::pushDigital(2, (currentPreset + 1) & 0b100);
     }
 
     inline void setActiveFreezeLeds()
     {
+        bool active = controller.GetScaledParameter(Parameter::Active) == 1;
+        bool freeze = controller.GetScaledParameter(Parameter::Freeze) == 1;
         // Uses the Red LED to indicate active and freeze states
-        Polygons::controls.pushDigital(3, active);
-        Polygons::controls.pushDigital(6, freeze);
+        Polygons::pushDigital(3, active);
+        Polygons::pushDigital(6, freeze);
     }
 
     inline void setIOConfig()
     {
         stereo = controller.GetScaledParameter(Parameter::InputMode) > 0.5;
-        int gainIn = (uint8_t)round(controller.GetScaledParameter(Parameter::InputGain) * 2);
-        int gainOut = (uint8_t)round(controller.GetScaledParameter(Parameter::OutputGain) * 2);
+        int gainIn = (int8_t)controller.GetScaledParameter(Parameter::InputGain) * 2;
+        int gainOut = (int8_t)controller.GetScaledParameter(Parameter::OutputGain);
         Polygons::codec.analogInGain(gainIn, gainIn);
+        Serial.print("Setting output gain ");
+        Serial.println(gainOut);
         Polygons::codec.lineOutGain(gainOut, gainOut, false);
         Polygons::codec.headphoneGain(gainOut, gainOut, false);
     }
 
-    inline void handleUpdate(Polygons::ControlType type, int index)
+    inline bool handleUpdate(Polygons::ParameterUpdate* update)
     {
-        if (type == Polygons::ControlType::Digital && index == 7)
+        if (update->Type == Polygons::MessageType::Digital && update->Index == 7)
         {
             storePreset(currentPreset);
+            return true;
         }
-        else if (type == Polygons::ControlType::Digital && index < menu.pageCount)
+        else if (update->Type == Polygons::MessageType::Digital && update->Index == 8 && update->Value > 0)
         {
-            menu.SelectedPage = index;
-            menu.setUpdated();
+            loadPreset((currentPreset + 1) % PRESET_COUNT);
+            return true;
         }
-        else if (type == Polygons::ControlType::Digital && index == 8)
-        {
-            if (Polygons::controls.Digital[index] > 0)
-            {
-                loadPreset((currentPreset + 1) % PRESET_COUNT);
-            }
-        }
-        else if (type == Polygons::ControlType::Digital && index == 9)
-        {
-            if (Polygons::controls.Digital[index] > 0)
-            {
-                active = !active;
-                setActiveFreezeLeds();
-            }
-        }
-        else if (type == Polygons::ControlType::Digital && index == 10)
-        {
-            freeze = Polygons::controls.Digital[index] > 0;
-            controller.Freeze(freeze);
-            setActiveFreezeLeds();
-        }
-        else if (type == Polygons::ControlType::Encoder)
-        {
-            int delta = (int)Polygons::controls.EncoderDelta[index];
-            Polygons::controls.EncoderDelta[index] = 0;
-            int paramId = getParam(menu.SelectedPage, index);
-            if (paramId >= 0 && paramId < Parameter::COUNT)
-            {
-                int newVal = controller.GetAllParameters()[paramId] + delta * 256;
-                newVal = Clip(newVal, 0, UINT16_MAX);
-                controller.SetParameter(paramId, (uint16_t)newVal);
-                menu.setUpdated(index);
-            }
 
-            if (paramId >= Parameter::InputMode)
-                setIOConfig();
-        }
+       return false;
+    }
+
+    inline void setParameter(uint8_t paramId, uint16_t value)
+    {
+        controller.SetParameter(paramId, (uint16_t)value);
+        setActiveFreezeLeds();
+        if (paramId >= Parameter::InputMode && paramId <= Parameter::OutputGain)
+            setIOConfig();
     }
 
     inline void audioCallback(int32_t** inputs, int32_t** outputs)
@@ -291,7 +296,7 @@ namespace CloudSeed
         controller.Process(ins, BUFFER_SIZE);
         float** outs = controller.GetOutput();
 
-        if (active)
+        if (controller.GetScaledParameter(Parameter::Active) == 1)
         {
             for (size_t i = 0; i < AUDIO_BLOCK_SAMPLES; i++)
             {
@@ -315,7 +320,8 @@ namespace CloudSeed
         auto preset = &Presets[number * Parameter::COUNT];
         for (size_t i = 0; i < Parameter::COUNT; i++)
         {
-            controller.SetParameter(i, preset[i]);
+            if (i != Parameter::Active && i != Parameter::Freeze)
+                controller.SetParameter(i, preset[i]);
         }
         setPresetLed();
         setIOConfig();
@@ -329,38 +335,60 @@ namespace CloudSeed
         {
             preset[i] = rawParams[i];
         }
-        menu.setMessage("Preset Stored", 1000);
+        bool ok = Storage::WriteFile("Cloudseed/presets.bin", (uint8_t*)Presets, sizeof(Presets));
+        if (ok)
+            os.menu.setMessage("Preset Stored", 1000);
+        else
+            os.menu.setMessage("Error writing preset!", 1000);
+    }
+
+    inline void LoadPresetsSD()
+    {
+        if (Storage::FileExists("Cloudseed/presets.bin"))
+        {
+            Serial.println("Reading presets from SD Card...");
+            Storage::ReadFile("Cloudseed/presets.bin", (uint8_t*)Presets, sizeof(Presets));
+            Serial.println("Done reading presets");
+        }
+        else
+        {
+            Serial.println("No presets are present, writing to SD Card...");
+            Storage::CreateFolder("Cloudseed");
+            Storage::WriteFile("Cloudseed/presets.bin", (uint8_t*)Presets, sizeof(Presets));
+            Serial.println("Done writing presets");
+        }
     }
 
     inline void start()
     {
+        Serial.println("Starting up - waiting for controller signal...");
+        os.waitForControllerSignal();
         setNames();
+        RegisterParams();
 
         for (size_t i = 0; i < Parameter::COUNT * PRESET_COUNT; i++)
-        {
             Presets[i] = 0;
-        }
         
-        active = true;
-        freeze = false;
-        stereo = true;
-        Polygons::controls.onUpdate = handleUpdate;
-        menu.pageCount = 8;
-        menu.getPageName = getPageName;
-        menu.getParameterName = getParameterName;
-        menu.getParameterDisplay = getParameterDisplay;
+        os.HandleUpdateCallback = handleUpdate;
+        os.SetParameterCallback = setParameter;
+        os.PageCount = os.controlBoard == ControlBoard::Alpha ? 5 : 3;
+        os.menu.getPageName = getPageName;
+        os.menu.getParameterName = getParameterName;
+        os.menu.getParameterDisplay = getParameterDisplay;
         i2sAudioCallback = audioCallback;
         
+        LoadPresetsSD();
         loadPreset(0);
+        controller.SetParameter(Parameter::Active, 1);
         setActiveFreezeLeds();
+
+        Serial.println("Enable pin 6");
+        pinMode(6, OUTPUT);
+        digitalWrite(6, LOW);
     }
 
     inline void loop()
     {
-        Polygons::controls.readUpdates();
-        menu.Draw();
-        Polygons::pushDisplay();
-        setPresetLed();
-        setActiveFreezeLeds();
+        os.loop();
     }
 }

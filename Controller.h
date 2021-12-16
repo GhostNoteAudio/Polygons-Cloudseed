@@ -36,17 +36,11 @@ namespace CloudSeed
 			return parameters;
 		}
 
-		void Freeze(bool enable)
-		{
-			channelL.freeze = enable;
-			channelR.freeze = enable;
-		}
-
 		double GetScaledParameter(int param)
 		{
 			switch (param)
 			{
-                case Parameter::Mode:                     return (int)(P(Parameter::Mode) * 5.999);
+                case Parameter::Mode:                     return (int)(P(Parameter::Mode, 60) * 5.999);
                 case Parameter::PreDelay:                 return (int)(P(Parameter::PreDelay) * 240);
 
                 case Parameter::LowCut:                   return 20 + Response4Oct(P(Parameter::LowCut)) * 980;
@@ -70,9 +64,12 @@ namespace CloudSeed
 				case Parameter::SeedDelay:                return (int)(P(Parameter::SeedDelay) * 255.99);
 				case Parameter::SeedDiffuse:              return (int)(P(Parameter::SeedDiffuse) * 255.99);
 
-				case Parameter::InputMode:                return (int)(P(Parameter::InputMode) > 0.5);
+				case Parameter::InputMode:                return (int)(P(Parameter::InputMode, 10) > 0.5);
 				case Parameter::InputGain:                return P(Parameter::InputGain) * 12;
-				case Parameter::OutputGain:               return -6 + P(Parameter::OutputGain) * 18;
+				case Parameter::OutputGain:               return (int)(-6 + P(Parameter::OutputGain) * 18);
+
+				case Parameter::Active:                   return parameters[Parameter::Active];
+				case Parameter::Freeze:                   return parameters[Parameter::Freeze];
 
                 default: return 0.0;
 			}
@@ -108,10 +105,10 @@ namespace CloudSeed
 		}
 		
 	private:
-		double P(int para)
+		double P(int para, int maxVal=1023)
 		{
 			auto idx = (int)para;
-			return idx >= 0 && idx < Parameter::COUNT ? (parameters[idx] / (double)UINT16_MAX) : 0.0;
+			return idx >= 0 && idx < Parameter::COUNT ? (parameters[idx] / (double)maxVal) : 0.0;
 		}
 	};
 }

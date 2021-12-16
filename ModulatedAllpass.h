@@ -4,6 +4,8 @@
 #include "Utils.h"
 #include <stdint.h>
 
+using namespace Polygons;
+
 namespace CloudSeed
 {
 	class ModulatedAllpass

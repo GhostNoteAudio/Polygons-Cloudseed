@@ -31,6 +31,9 @@ namespace CloudSeed
         static const int InputGain = 19;
         static const int OutputGain = 20;
 
-        static const int COUNT = 21;
+        static const int Active = 21;
+        static const int Freeze = 22;
+
+        static const int COUNT = 23;
     };
 }

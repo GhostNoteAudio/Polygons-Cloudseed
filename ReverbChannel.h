@@ -71,6 +71,7 @@ namespace CloudSeed
 		float feedbackHiFc;
 		float feedbackLoFc;
 		float feedbackDampDb;
+		bool freeze;
 
 		int seedEarly;
 		int seedDelay;
@@ -87,8 +88,6 @@ namespace CloudSeed
 		ModulatedAllpass* lateDiffusers;
 
 	public:
-		bool freeze;
-
 		ReverbChannel(int samplerate, bool leftChannel) :
 			lowCut(Biquad::FilterType::HighPass, samplerate),
 			highCut(Biquad::FilterType::LowPass, samplerate),
@@ -253,6 +252,8 @@ namespace CloudSeed
 			case Parameter::SeedDiffuse:
 				seedDiffuse = (int)value;
 				UpdateLateDiffusers();
+			case Parameter::Freeze:
+				freeze = value > 0.5;
 				break;
 			}
 		}
