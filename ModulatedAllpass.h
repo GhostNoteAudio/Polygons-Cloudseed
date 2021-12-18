@@ -11,7 +11,7 @@ namespace CloudSeed
 	class ModulatedAllpass
 	{
 	public:
-		static const int DelayBufferSamples = FS_MAX / 10; // 100ms
+		static const int DelayBufferSamples = FS_MAX / 20; // 100ms - delay line runs at 0.5*fs
 		static const int ModulationUpdateRate = 8;
 		static constexpr float SAMPLE_MAX16_INV = (float)(1.0 / INT16_MAX);
 
@@ -75,31 +75,38 @@ namespace CloudSeed
 
 				float bufOut;
 
-				if (interp)
+				// make sure sampleCount is an even number!
+				if ((i & 0x01) == 0) // only update every other sample, delay line runs at half the sample frequency
 				{
-					int idxA = index - delayA;
-					int idxB = index - delayB;
-					idxA += DelayBufferSamples * (idxA < 0); // modulo
-					idxB += DelayBufferSamples * (idxB < 0); // modulo
+					if (interp)
+					{
+						int idxA = index - delayA;
+						int idxB = index - delayB;
+						idxA += DelayBufferSamples * (idxA < 0); // modulo
+						idxB += DelayBufferSamples * (idxB < 0); // modulo
 
-					bufOut = delayBuffer[idxA] * gainA + delayBuffer[idxB] * gainB;
-					bufOut *= SAMPLE_MAX16_INV;
+						bufOut = delayBuffer[idxA] * gainA + delayBuffer[idxB] * gainB;
+						bufOut *= SAMPLE_MAX16_INV;
+					}
+					else
+					{
+						int idxA = index - delayA;
+						idxA += DelayBufferSamples * (idxA < 0); // modulo
+						bufOut = delayBuffer[idxA];
+						bufOut *= SAMPLE_MAX16_INV;
+					}
+
+					auto inVal = Clip1(input[i] + bufOut * Feedback);
+					delayBuffer[index] = (int16_t)(inVal * (INT16_MAX-1));
+					output[i] = bufOut - inVal * Feedback;
+
+					index++;
+					if (index >= DelayBufferSamples) index -= DelayBufferSamples;
 				}
 				else
 				{
-					int idxA = index - delayA;
-					idxA += DelayBufferSamples * (idxA < 0); // modulo
-					bufOut = delayBuffer[idxA];
-					bufOut *= SAMPLE_MAX16_INV;
+					output[i] = output[i-1];
 				}
-
-				auto inVal = Clip1(input[i] + bufOut * Feedback);
-				delayBuffer[index] = (int16_t)(inVal * (INT16_MAX-1));
-				output[i] = bufOut - inVal * Feedback;
-
-				index++;
-				if (index >= DelayBufferSamples) index -= DelayBufferSamples;
-				
 				samplesProcessed++;
 			}
 		}
@@ -117,6 +124,7 @@ namespace CloudSeed
 				ModAmount = SampleDelay - 1;
 
 			auto totalDelay = SampleDelay + ModAmount * mod;
+			totalDelay /= 2; // Half the total delay because delay line runs at 0.5*Fs
 			
 			if (totalDelay <= 0) // should no longer be required
 				totalDelay = 1;

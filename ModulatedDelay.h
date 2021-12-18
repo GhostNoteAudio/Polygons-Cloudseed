@@ -17,7 +17,7 @@ namespace CloudSeed
 		static const int DelayBufferSizeSamples = N;
 		static constexpr float SAMPLE_MAX16_INV = (float)(1.0 / INT16_MAX);
 
-		int16_t delayBuffer[DelayBufferSizeSamples];
+		int16_t delayBuffer[N];
 		float output[BUFFER_SIZE];
 		int writeIndex;
 		int readIndexA;
@@ -57,16 +57,24 @@ namespace CloudSeed
 				if (samplesProcessed == ModulationUpdateRate)
 					Update();
 
-				delayBuffer[writeIndex] = (int16_t)(Clip1(input[i]) * (INT16_MAX-1));
-				output[i] = delayBuffer[readIndexA] * gainA + delayBuffer[readIndexB] * gainB;
-				output[i] *= SAMPLE_MAX16_INV;
+				// sampleCount must be an even number!
+				if ((i & 0x01) == 0) // only update every other sample, delay line runs at half the sample frequency
+				{
+					delayBuffer[writeIndex] = (int16_t)(Clip1(input[i]*0.5) * (INT16_MAX-1));
+					output[i] = delayBuffer[readIndexA] * gainA + delayBuffer[readIndexB] * gainB;
+					output[i] *= SAMPLE_MAX16_INV * 2;
 
-				writeIndex++;
-				readIndexA++;
-				readIndexB++;
-				if (writeIndex >= DelayBufferSizeSamples) writeIndex -= DelayBufferSizeSamples;
-				if (readIndexA >= DelayBufferSizeSamples) readIndexA -= DelayBufferSizeSamples;
-				if (readIndexB >= DelayBufferSizeSamples) readIndexB -= DelayBufferSizeSamples;
+					writeIndex++;
+					readIndexA++;
+					readIndexB++;
+					if (writeIndex >= DelayBufferSizeSamples) writeIndex -= DelayBufferSizeSamples;
+					if (readIndexA >= DelayBufferSizeSamples) readIndexA -= DelayBufferSizeSamples;
+					if (readIndexB >= DelayBufferSizeSamples) readIndexB -= DelayBufferSizeSamples;
+				}
+				else
+				{
+					output[i] = output[i-1];
+				}
 				samplesProcessed++;
 			}
 		}
@@ -95,6 +103,7 @@ namespace CloudSeed
 				ModAmount = SampleDelay - 1;
 
 			auto totalDelay = SampleDelay + ModAmount * mod;
+			totalDelay /= 2; // Half the total delay because delay line runs at 0.5*Fs
 
 			auto delayA = (int)totalDelay;
 			auto delayB = (int)totalDelay + 1;

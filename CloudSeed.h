@@ -137,6 +137,7 @@ namespace CloudSeed
         else if (page == 4)
             strcpy(dest, "Input");
         else if (page == 7)
+            //sprintf(dest, "%.1f", (Timers::GetCpuLoad()*100));
             strcpy(dest, "SAVE");
         else
             strcpy(dest, "");
@@ -321,7 +322,10 @@ namespace CloudSeed
         for (size_t i = 0; i < Parameter::COUNT; i++)
         {
             if (i != Parameter::Active && i != Parameter::Freeze)
+            {
                 controller.SetParameter(i, preset[i]);
+                os.Parameters[i].Value = preset[i];
+            }
         }
         setPresetLed();
         setIOConfig();

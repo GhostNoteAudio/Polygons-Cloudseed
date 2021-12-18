@@ -9,20 +9,21 @@
 #include "Hp1.h"
 #include "Biquad.h"
 #include "LcgRandom.h"
+#include "blocks/Brickwall.h"
 
 namespace CloudSeed
 {
-	const int EARLY_DIFFUSER_COUNT = 8;
+	const int EARLY_DIFFUSER_COUNT = 16;
 	const int DELAY_LINE_COUNT = 6;
-	const int LATE_DIFFUSER_COUNT = 2;
+	const int LATE_DIFFUSER_COUNT = 8;
 
-	DMAMEM ModulatedDelay<FS_MAX/4> preDelayL;
-	DMAMEM ModulatedDelay<FS_MAX/4> preDelayR;
+	ModulatedDelay<FS_MAX/8> preDelayL;
+	DMAMEM ModulatedDelay<FS_MAX/8> preDelayR;
 	DMAMEM ModulatedAllpass earlyDiffusersL[EARLY_DIFFUSER_COUNT];
 	ModulatedAllpass earlyDiffusersR[EARLY_DIFFUSER_COUNT];
-	DMAMEM ModulatedDelay<FS_MAX/4> delayLinesL[DELAY_LINE_COUNT];
-	DMAMEM ModulatedDelay<FS_MAX/4> delayLinesR[DELAY_LINE_COUNT];
-	ModulatedAllpass lateDiffusersL[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
+	DMAMEM ModulatedDelay<FS_MAX/8> delayLinesL[DELAY_LINE_COUNT];
+	DMAMEM ModulatedDelay<FS_MAX/8> delayLinesR[DELAY_LINE_COUNT];
+	DMAMEM ModulatedAllpass lateDiffusersL[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
 	ModulatedAllpass lateDiffusersR[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
 	LcgRandom random;
 
@@ -32,7 +33,7 @@ namespace CloudSeed
 		static const int Fast = 0; // Quick attack, short decay, fairly sparse
 		static const int Plate = 1; // Thick with fairly fast attack,
 		static const int Sparse = 2; // Long and sparse
-		static const int Swell = 3; // nonlinear attack, swell with lots of allpass delay
+		static const int Swell = 3; // nonlinear slow attack, swell with lots of allpass delay
 		static const int Plains = 4; // Giant slurry of sound
 		static const int Wash = 5; // white noise wash
 	};
@@ -46,9 +47,9 @@ namespace CloudSeed
 		float tempBuffer2[BUFFER_SIZE];
 		bool leftChannel;
 
-		int earlyDiffuseStages;
-		int lateDiffuseStages;
-		int delayLineCount;
+		unsigned int earlyDiffuseStages;
+		unsigned int lateDiffuseStages;
+		unsigned int delayLineCount;
 		bool useInterpolation;
 		int mode;
 		float dryGain;
@@ -79,18 +80,20 @@ namespace CloudSeed
 
 		Biquad lowCut;
 		Biquad highCut;
+		Fir<64> brickwall;
 		float feedback[DELAY_LINE_COUNT];
 		Biquad feedbackHi[DELAY_LINE_COUNT];
 		Biquad feedbackLo[DELAY_LINE_COUNT];
-		ModulatedDelay<FS_MAX/4>* preDelay;
+		ModulatedDelay<FS_MAX/8>* preDelay;
 		ModulatedAllpass* earlyDiffusers;
-		ModulatedDelay<FS_MAX/4>* delayLines;
+		ModulatedDelay<FS_MAX/8>* delayLines;
 		ModulatedAllpass* lateDiffusers;
 
 	public:
 		ReverbChannel(int samplerate, bool leftChannel) :
 			lowCut(Biquad::FilterType::HighPass, samplerate),
 			highCut(Biquad::FilterType::LowPass, samplerate),
+			brickwall(brickwall10k, sizeof(brickwall10k)/sizeof(float)),
 			feedbackHi { Biquad(Biquad::FilterType::HighShelf, samplerate), Biquad(Biquad::FilterType::HighShelf, samplerate), Biquad(Biquad::FilterType::HighShelf, samplerate), 
 						 Biquad(Biquad::FilterType::HighShelf, samplerate), Biquad(Biquad::FilterType::HighShelf, samplerate), Biquad(Biquad::FilterType::HighShelf, samplerate)},
 			feedbackLo { Biquad(Biquad::FilterType::LowShelf, samplerate), Biquad(Biquad::FilterType::LowShelf, samplerate), Biquad(Biquad::FilterType::LowShelf, samplerate), 
@@ -163,7 +166,7 @@ namespace CloudSeed
 				delayLines[i].SampleDelay = 10000;
 				delayLines[i].ModAmount = 0;
 				delayLines[i].ModRate = 0;
-			}
+			}			
 
 			UpdateFeedbackFilters();
 			UpdateEarlyDiffusers(true);
@@ -258,6 +261,12 @@ namespace CloudSeed
 			}
 		}
 
+		ModulatedAllpass* GetLateDiffuser(int delayLine, int stage)
+		{
+			int idx = LATE_DIFFUSER_COUNT * delayLine + stage;
+			return &lateDiffusers[idx];
+		}
+
 		void Process(float* input, int sampleCount)
 		{
 			// Jumping straight between 100% feedback (freeze) and the selected feedback causes a click, needs to be smoothed
@@ -273,6 +282,7 @@ namespace CloudSeed
 			for (int i = 0; i < sampleCount; i++)
 			{
 				float x = input[i];
+				x = brickwall.Process(x);
 				x = lowCut.Process(x);
 				x = highCut.Process(x);
 				tempBuffer[i] = x;
@@ -281,30 +291,23 @@ namespace CloudSeed
 			preDelay->Process(tempBuffer, sampleCount);
 			
 			float* currentDiffuser = preDelayOut;
-			for (int i = 0; i < earlyDiffuseStages; i++)
+			for (size_t i = 0; i < earlyDiffuseStages; i++)
 			{
 				earlyDiffusers[i].Process(currentDiffuser, sampleCount);
 				currentDiffuser = earlyDiffusers[i].GetOutput();
 			}
 
 			ZeroBuffer(tempBuffer, sampleCount); // tempbuffer becomes the out buffer
-			for (int i = 0; i < delayLineCount; i++)
+			for (size_t i = 0; i < delayLineCount; i++)
 			{
-				int lastDiffuserIdx;
-				if (lateDiffuseStages == 0)
-				 	lastDiffuserIdx = i;
-				else if (lateDiffuseStages == 1)
-					lastDiffuserIdx = i;
-				else
-					lastDiffuserIdx = DELAY_LINE_COUNT + i;
-				
-				float* lateDiffOut = lateDiffusers[lastDiffuserIdx].GetOutput();
-				Mix(tempBuffer, lateDiffOut, GetPerLineGain(), sampleCount);
+				ModulatedAllpass* lastDiffuser = GetLateDiffuser(i, (lateDiffuseStages == 0) ? 0 : lateDiffuseStages - 1);
+				float* lastDiffOut = lastDiffuser->GetOutput();
+				Mix(tempBuffer, lastDiffOut, GetPerLineGain(), sampleCount);
 
 				// mix the input into the line
 				ZeroBuffer(tempBuffer2, sampleCount);
 				Mix(tempBuffer2, currentDiffuser, 1.0f, sampleCount);
-				Mix(tempBuffer2, lateDiffOut, activeFeedback[i], sampleCount);
+				Mix(tempBuffer2, lastDiffOut, activeFeedback[i], sampleCount);
 
 				delayLines[i].Process(tempBuffer2, sampleCount);
 				float* lineOut = delayLines[i].GetOutput();
@@ -316,24 +319,31 @@ namespace CloudSeed
 				if (lateDiffuseStages == 0)
 				{
 					// if no late diffusers active, we just write the delay line output into the diffuse buffer
-					ZeroBuffer(lateDiffOut, sampleCount);
-					Mix(lateDiffOut, lineOut, 1.0f, sampleCount);
-				}
-				else if (lateDiffuseStages == 1)
-				{
-					lateDiffusers[i].Process(lineOut, sampleCount);
+					ZeroBuffer(lastDiffOut, sampleCount);
+					Mix(lastDiffOut, lineOut, 1.0f, sampleCount);
 				}
 				else
 				{
-					lateDiffusers[i].Process(lineOut, sampleCount);
-					auto lateDiffOut = lateDiffusers[i].GetOutput();
-					lateDiffusers[DELAY_LINE_COUNT + i].Process(lateDiffOut, sampleCount);
+					float* currentBuf = lineOut;
+					for (size_t df = 0; df < lateDiffuseStages; df++)
+					{
+						auto diffuser = GetLateDiffuser(i, df);
+						diffuser->Process(currentBuf, sampleCount);
+						currentBuf = diffuser->GetOutput();
+					}
 				}
 			}
 			
 			for (int i = 0; i < sampleCount; i++)
 			{
-				outBuffer[i] = dryGain * input[i] + wetGain * (earlyGain * currentDiffuser[i] + lateGain * tempBuffer[i]);
+				float sample = dryGain * input[i] + wetGain * (earlyGain * currentDiffuser[i] + lateGain * tempBuffer[i]);
+				outBuffer[i] = sample;
+				if (isnanf(sample))
+				{
+					Serial.println("nan values detected in output - resetting all buffers to zero!");
+					ClearBuffers();
+					break;
+				}
 			}
 		}
 
@@ -342,6 +352,32 @@ namespace CloudSeed
 			for (int i = 0; i < BUFFER_SIZE; i++)
 			{
 				outBuffer[i] = 0.0;
+				tempBuffer[i] = 0.0;
+				tempBuffer2[i] = 0.0;
+			}
+
+			lowCut.ClearBuffers();
+			highCut.ClearBuffers();
+			brickwall.ClearBuffers();
+
+			for (size_t i = 0; i < DELAY_LINE_COUNT; i++)
+			{
+				feedback[i] = 0.0;
+				feedbackHi[i].ClearBuffers();
+				feedbackLo[i].ClearBuffers();
+				delayLines[i].ClearBuffers();
+			}
+			
+			preDelay->ClearBuffers();
+			
+			for (size_t i = 0; i < EARLY_DIFFUSER_COUNT; i++)
+			{
+				earlyDiffusers[i].ClearBuffers();
+			}
+
+			for (size_t i = 0; i < DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT; i++)
+			{
+				lateDiffusers[i].ClearBuffers();
 			}
 		}
 
@@ -352,9 +388,9 @@ namespace CloudSeed
 			if (mode == Mode::Fast)
             {
 				earlyDiffuseStages = 6;
-				earlyDiffFeedback = 0.85;
+				earlyDiffFeedback = 0.75;
 				lateDiffFeedback = 0.7;
-				lateDiffuseStages = 1;
+				lateDiffuseStages = 3;
 				useInterpolation = true;
 				earlyDiffScaler = 95;
 				lateDiffScaler = 95;
@@ -362,46 +398,46 @@ namespace CloudSeed
 				delayLineScaler = 150;
 				feedbackHiFc = 8000;
 				feedbackLoFc = 40;
-				feedbackDampDb = -2;
+				feedbackDampDb = -1;
 			}
             else if (mode == Mode::Plate)
             {
 				earlyDiffuseStages = 6;
-				earlyDiffFeedback = 0.8;
-				lateDiffFeedback = 0.8;
-				lateDiffuseStages = 2;
+				earlyDiffFeedback = 0.7;
+				lateDiffFeedback = 0.7;
+				lateDiffuseStages = 6;
 				useInterpolation = true;
 				earlyDiffScaler = 95;
 				lateDiffScaler = 95;
-				delayLineCount = 6;
+				delayLineCount = 5;
 				delayLineScaler = 120;
-				feedbackHiFc = 1500;
-				feedbackLoFc = 20;
-				feedbackDampDb = -6;
+				feedbackHiFc = 3500;
+				feedbackLoFc = 80;
+				feedbackDampDb = -2;
 			}
             else if (mode == Mode::Sparse)
 			{
 				earlyDiffuseStages = 2;
 				earlyDiffFeedback = 0.7;
-				lateDiffFeedback = 0.7;
+				lateDiffFeedback = 0.6;
 				lateDiffuseStages = 0;
 				useInterpolation = true;
 				earlyDiffScaler = 95;
 				lateDiffScaler = 95;
-				delayLineCount = 3;
+				delayLineCount = 4;
 				delayLineScaler = 240;
-				feedbackHiFc = 1200;
-				feedbackLoFc = 150;
+				feedbackHiFc = 10000;
+				feedbackLoFc = 30;
 				feedbackDampDb = -0;
 			}
             else if (mode == Mode::Swell)
             {
-				earlyDiffuseStages = 8;
-				earlyDiffFeedback = 0.45;
+				earlyDiffuseStages = 16;
+				earlyDiffFeedback = 0.5;
 				lateDiffFeedback = 0.5;
-				lateDiffuseStages = 2;
+				lateDiffuseStages = 6;
 				useInterpolation = true;
-				earlyDiffScaler = 95;
+				earlyDiffScaler = 98;
 				lateDiffScaler = 95;
 				delayLineCount = 6;
 				delayLineScaler = 240;
@@ -411,10 +447,10 @@ namespace CloudSeed
 			}
             else if (mode == Mode::Plains)
             {
-				earlyDiffuseStages = 6;
-				earlyDiffFeedback = 0.6;
+				earlyDiffuseStages = 12;
+				earlyDiffFeedback = 0.7;
 				lateDiffFeedback = 0.6;
-				lateDiffuseStages = 2;
+				lateDiffuseStages = 8;
 				useInterpolation = true;
 				earlyDiffScaler = 95;
 				lateDiffScaler = 95;
@@ -426,18 +462,18 @@ namespace CloudSeed
 			}
             else if (mode == Mode::Wash)
             {
-				earlyDiffuseStages = 6;
+				earlyDiffuseStages = 8;
 				earlyDiffFeedback = 0.7;
 				lateDiffFeedback = 0.7;
-				lateDiffuseStages = 1;
+				lateDiffuseStages = 3;
 				useInterpolation = false;
 				earlyDiffScaler = 95;
 				lateDiffScaler = 95;
 				delayLineCount = 6;
 				delayLineScaler = 180;
-				feedbackHiFc = 20000;
-				feedbackLoFc = 20;
-				feedbackDampDb = 0;
+				feedbackHiFc = 10000;
+				feedbackLoFc = 80;
+				feedbackDampDb = -1;
 			}
 
 			UpdateFeedbackFilters();
@@ -480,7 +516,7 @@ namespace CloudSeed
 			 	auto gainAfter1Iteration = DB2gain(dbAfter1Iteration);
 			 	feedback[i] = (float)gainAfter1Iteration;
 
-				delayLines[i].ModAmount = Ms2Samples(lateMod * 2);
+				delayLines[i].ModAmount = Ms2Samples(lateMod);
 				delayLines[i].ModRate = (lateRate / samplerate) * (0.5f + 0.5f * random.NextFloat());
 				if (resetPhase) delayLines[i].ResetPhase(random.NextFloat());
 			}
@@ -495,7 +531,7 @@ namespace CloudSeed
 				auto d = powf(10, random.NextFloat()) * 0.1; // random value distributed over range 0.1 ... 1.0
 				int sampleDelay = Ms2Samples(d) * earlyDiffScaler * earlySize;
 				earlyDiffusers[i].SampleDelay = sampleDelay;
-				earlyDiffusers[i].ModAmount = Ms2Samples(earlyMod * 2);
+				earlyDiffusers[i].ModAmount = Ms2Samples(earlyMod);
 				earlyDiffusers[i].ModRate = (earlyRate / samplerate) * (0.5f + 0.5f * random.NextFloat());
 				earlyDiffusers[i].Feedback = earlyDiffFeedback;
 				if (resetPhase) earlyDiffusers[i].ResetPhase(random.NextFloat());
@@ -509,9 +545,9 @@ namespace CloudSeed
 			for (size_t i = 0; i < DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT; i++)
 			{
 				auto d = powf(10, random.NextFloat()) * 0.1; // random value distributed over range 0.1 ... 1.0
-				int sampleDelay = Ms2Samples(d) * lateDiffScaler; // Sized is not user scalable for late diffusers
+				int sampleDelay = Ms2Samples(d) * lateDiffScaler; // Size is not user scalable for late diffusers
 				lateDiffusers[i].SampleDelay = sampleDelay;
-				lateDiffusers[i].ModAmount = Ms2Samples(lateMod * 2);
+				lateDiffusers[i].ModAmount = Ms2Samples(lateMod);
 				lateDiffusers[i].ModRate = (lateRate / samplerate) * (0.5f + 0.5f * random.NextFloat());
 				lateDiffusers[i].Feedback = lateDiffFeedback;
 				if (resetPhase) lateDiffusers[i].ResetPhase(random.NextFloat());
@@ -520,7 +556,7 @@ namespace CloudSeed
 
 		double GetPerLineGain()
 		{
-			return 1.0 / std::sqrt(delayLineCount);
+			return 1.0 / std::sqrt((float)delayLineCount);
 		}
 
 		double Ms2Samples(double value)
