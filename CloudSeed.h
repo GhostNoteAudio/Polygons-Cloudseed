@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Parameter.h"
+#include "ParameterCloudseed.h"
 #include "Polygons.h"
-#include "Controller.h"
+#include "ControllerCloudseed.h"
 
 namespace CloudSeed
 {
@@ -251,8 +251,6 @@ namespace CloudSeed
         int gainIn = (int8_t)controller.GetScaledParameter(Parameter::InputGain) * 2;
         int gainOut = (int8_t)controller.GetScaledParameter(Parameter::OutputGain);
         Polygons::codec.analogInGain(gainIn, gainIn);
-        Serial.print("Setting output gain ");
-        Serial.println(gainOut);
         Polygons::codec.lineOutGain(gainOut, gainOut, false);
         Polygons::codec.headphoneGain(gainOut, gainOut, false);
     }
@@ -385,10 +383,6 @@ namespace CloudSeed
         loadPreset(0);
         controller.SetParameter(Parameter::Active, 1);
         setActiveFreezeLeds();
-
-        Serial.println("Enable pin 6");
-        pinMode(6, OUTPUT);
-        digitalWrite(6, LOW);
     }
 
     inline void loop()

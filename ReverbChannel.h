@@ -1,15 +1,18 @@
 #pragma once
 
 #include "Constants.h"
-#include "Parameter.h"
+#include "ParameterCloudseed.h"
 #include "Utils.h"
-#include "ModulatedDelay.h"
-#include "ModulatedAllpass.h"
+#include "blocks/ModulatedDelay.h"
+#include "blocks/ModulatedAllpass.h"
 #include "Lp1.h"
 #include "Hp1.h"
-#include "Biquad.h"
+#include "blocks/Biquad.h"
 #include "LcgRandom.h"
 #include "blocks/Brickwall.h"
+#include "blocks/Fir.h"
+
+using namespace Polygons;
 
 namespace CloudSeed
 {
@@ -17,14 +20,14 @@ namespace CloudSeed
 	const int DELAY_LINE_COUNT = 6;
 	const int LATE_DIFFUSER_COUNT = 8;
 
-	ModulatedDelay<FS_MAX/8> preDelayL;
-	DMAMEM ModulatedDelay<FS_MAX/8> preDelayR;
-	DMAMEM ModulatedAllpass earlyDiffusersL[EARLY_DIFFUSER_COUNT];
-	ModulatedAllpass earlyDiffusersR[EARLY_DIFFUSER_COUNT];
-	DMAMEM ModulatedDelay<FS_MAX/8> delayLinesL[DELAY_LINE_COUNT];
-	DMAMEM ModulatedDelay<FS_MAX/8> delayLinesR[DELAY_LINE_COUNT];
-	DMAMEM ModulatedAllpass lateDiffusersL[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
-	ModulatedAllpass lateDiffusersR[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
+	ModulatedDelay<FS_MAX/8, BUFFER_SIZE> preDelayL;
+	DMAMEM ModulatedDelay<FS_MAX/8, BUFFER_SIZE> preDelayR;
+	DMAMEM ModulatedAllpass<FS_MAX/20, BUFFER_SIZE> earlyDiffusersL[EARLY_DIFFUSER_COUNT];
+	ModulatedAllpass<FS_MAX/20, BUFFER_SIZE> earlyDiffusersR[EARLY_DIFFUSER_COUNT];
+	DMAMEM ModulatedDelay<FS_MAX/8, BUFFER_SIZE> delayLinesL[DELAY_LINE_COUNT];
+	DMAMEM ModulatedDelay<FS_MAX/8, BUFFER_SIZE> delayLinesR[DELAY_LINE_COUNT];
+	DMAMEM ModulatedAllpass<FS_MAX/20, BUFFER_SIZE> lateDiffusersL[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
+	ModulatedAllpass<FS_MAX/20, BUFFER_SIZE> lateDiffusersR[DELAY_LINE_COUNT * LATE_DIFFUSER_COUNT];
 	LcgRandom random;
 
 	class Mode
@@ -84,10 +87,10 @@ namespace CloudSeed
 		float feedback[DELAY_LINE_COUNT];
 		Biquad feedbackHi[DELAY_LINE_COUNT];
 		Biquad feedbackLo[DELAY_LINE_COUNT];
-		ModulatedDelay<FS_MAX/8>* preDelay;
-		ModulatedAllpass* earlyDiffusers;
-		ModulatedDelay<FS_MAX/8>* delayLines;
-		ModulatedAllpass* lateDiffusers;
+		ModulatedDelay<FS_MAX/8, BUFFER_SIZE>* preDelay;
+		ModulatedAllpass<FS_MAX/20, BUFFER_SIZE>* earlyDiffusers;
+		ModulatedDelay<FS_MAX/8, BUFFER_SIZE>* delayLines;
+		ModulatedAllpass<FS_MAX/20, BUFFER_SIZE>* lateDiffusers;
 
 	public:
 		ReverbChannel(int samplerate, bool leftChannel) :
@@ -261,7 +264,7 @@ namespace CloudSeed
 			}
 		}
 
-		ModulatedAllpass* GetLateDiffuser(int delayLine, int stage)
+		ModulatedAllpass<FS_MAX/20, BUFFER_SIZE>* GetLateDiffuser(int delayLine, int stage)
 		{
 			int idx = LATE_DIFFUSER_COUNT * delayLine + stage;
 			return &lateDiffusers[idx];
@@ -300,7 +303,7 @@ namespace CloudSeed
 			ZeroBuffer(tempBuffer, sampleCount); // tempbuffer becomes the out buffer
 			for (size_t i = 0; i < delayLineCount; i++)
 			{
-				ModulatedAllpass* lastDiffuser = GetLateDiffuser(i, (lateDiffuseStages == 0) ? 0 : lateDiffuseStages - 1);
+				auto lastDiffuser = GetLateDiffuser(i, (lateDiffuseStages == 0) ? 0 : lateDiffuseStages - 1);
 				float* lastDiffOut = lastDiffuser->GetOutput();
 				Mix(tempBuffer, lastDiffOut, GetPerLineGain(), sampleCount);
 
